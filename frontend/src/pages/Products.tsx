@@ -1,19 +1,23 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
-	getProducts, createProduct, updateProduct, deleteProduct, type Product,
+	getProducts, getProductsByNameOrNationalCode, createProduct, updateProduct, deleteProduct, type Product,
 } from "../api/products";
 
 const empty = { name: "", national_code: "", price: "", stock:"0" };
 
 export default function Products() {
+	const [form, setForm] = useState(empty);
+	const [search, setSearch] = useState("");
+	const [editingId, setEditingId] = useState<number | null>(null);
+
 	const qc = useQueryClient();
 	const { data, isLoading, error } = useQuery({
-		queryKey: ["products"],
-		queryFn: getProducts,
+		queryKey: ["products", search],
+		queryFn: () => ( search ? getProductsByNameOrNationalCode(search) : getProducts() ),
+		placeholderData: keepPreviousData,
 	});
-	const [form, setForm] = useState(empty);
-	const [editingId, setEditingId] = useState<number | null>(null);
+	
 
 	const refresh = () => qc.invalidateQueries({ queryKey: ["products"]});
 
@@ -48,11 +52,20 @@ export default function Products() {
 		});
 	};
 
-	if (isLoading) return <p>Cargando...</p>;
-	if (error) return <p>Error al cargar los productos</p>;
-
 	return (
 		<>
+			<input
+				type="text"
+				placeholder="Buscar producto..."
+				value={search}
+				onChange={(e) =>  {
+					if (e.target.value.trim() !== "") {
+						setSearch(e.target.value);
+					} else {
+						setSearch("");
+					}
+				}}
+			/>
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
@@ -83,22 +96,37 @@ export default function Products() {
 						<th>CN</th>
 						<th>Precio</th>
 						<th>Stock</th>
+						<th colSpan={2}>Acciones</th>
 					</tr>
 				</thead>
-				<tbody>
-					{data!.map((p) => (
-						<tr key={p.id}>
-							<td>{p.name}</td>
-							<td>{p.national_code}</td>
-							<td>{Number(p.price).toFixed(2)} €</td>
-							<td>{p.stock}</td>
-							<td>
-								<button onClick={() => startEdit(p)}>Editar</button>
-								<button onClick={() => remove.mutate(p.id)}>Borrar</button>
-							</td>
-						</tr>
-					))}
-				</tbody>
+				{isLoading ? (
+					<tbody>
+						<tr><td colSpan={6}>Cargando...</td></tr>
+					</tbody>
+				) : error ? (
+					<tbody>
+						<tr><td colSpan={6}>Error al cargar los productos</td></tr>
+					</tbody>
+				) : data && data.length > 0 ? (
+					<tbody>
+						{data.map((p) => (
+							<tr key={p.id}>
+								<td>{p.name}</td>
+								<td>{p.national_code}</td>
+								<td>{Number(p.price).toFixed(2)} €</td>
+								<td>{p.stock}</td>
+								<td>
+									<button onClick={() => startEdit(p)}>Editar</button>
+									<button onClick={() => remove.mutate(p.id)}>Borrar</button>
+								</td>
+							</tr>
+						))}
+					</tbody>
+				) : (
+					<tbody>
+						<tr><td colSpan={6}>No se encontraron productos.</td></tr>
+					</tbody>
+				)}
 			</table>
 		</>
 	)

@@ -16,6 +16,11 @@ router.get("/", async (_req, res) => {
 	res.json(rows);
 });
 
+router.get("/search/:busqueda", async (req, res) => {
+	const { rows } = await pool.query("SELECT * FROM products WHERE national_code ILIKE $1 OR name ILIKE $1", [`%${req.params.busqueda}%`]);
+	res.json(rows);
+});
+
 router.post("/" , async (req, res) => {
 	const data = productSchema.parse(req.body);
 	const { rows } = await pool.query(

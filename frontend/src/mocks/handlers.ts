@@ -12,6 +12,14 @@ let nextId = 4;
 export const handlers = [
 	http.get("*/products", () => HttpResponse.json(products)),
 
+	http.get("*/products/search/:busqueda", ({ params }) => {
+		const { busqueda } = params;
+		const filteredProducts = products.filter((p) => 
+			p.national_code?.includes(String(busqueda)) || p.name.toLocaleLowerCase().includes(String(busqueda).toLowerCase())
+		);
+		return HttpResponse.json(filteredProducts);
+	}),
+
 	http.post("*/products", async ({ request }) => {
 		const body = (await request.json()) as any;
 		const product = {id: nextId++, ...body, price: Number(body.price).toFixed(2)};

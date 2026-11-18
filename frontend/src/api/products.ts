@@ -20,6 +20,9 @@ export type ProductInput = {
 	stock: number;
 }
 
+export const getProductsByNameOrNationalCode = (busqueda: string) =>
+	client.get<Product[]>(`/products/search/${encodeURIComponent(busqueda)}`).then((r) => r.data);
+
 export const createProduct = (data: ProductInput) => 
 	client.post<Product>("/products", data).then((r) => r.data);
 
