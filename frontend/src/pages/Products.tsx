@@ -1,20 +1,23 @@
 import { useState } from "react";
+import axios from "axios";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
 	getProducts, getProductsByNameOrNationalCode, createProduct, updateProduct, deleteProduct, type Product,
 } from "../api/products";
+import { useDebounce } from "../hooks/useDebounce";
 
 const empty = { name: "", national_code: "", price: "", stock:"0" };
 
 export default function Products() {
 	const [form, setForm] = useState(empty);
 	const [search, setSearch] = useState("");
+	const debouncedSearch = useDebounce(search.trim(), 300);
 	const [editingId, setEditingId] = useState<number | null>(null);
 
 	const qc = useQueryClient();
 	const { data, isLoading, error } = useQuery({
-		queryKey: ["products", search],
-		queryFn: () => ( search ? getProductsByNameOrNationalCode(search) : getProducts() ),
+		queryKey: ["products", debouncedSearch],
+		queryFn: () => ( debouncedSearch ? getProductsByNameOrNationalCode(debouncedSearch) : getProducts() ),
 		placeholderData: keepPreviousData,
 	});
 	
@@ -40,9 +43,16 @@ export default function Products() {
 		}
 	});
 
+	const saveError = save.isError
+		? axios.isAxiosError(save.error)
+			? save.error.response?.data?.error ?? "Error al guardar el producto"
+			: "Error al guardar el producto"
+		: null;
+
 	const remove = useMutation({ mutationFn: deleteProduct, onSuccess: refresh });
 
 	const startEdit = (p: Product) => {
+		save.reset();
 		setEditingId(p.id);
 		setForm({
 			name: p.name,
@@ -58,13 +68,7 @@ export default function Products() {
 				type="text"
 				placeholder="Buscar producto..."
 				value={search}
-				onChange={(e) =>  {
-					if (e.target.value.trim() !== "") {
-						setSearch(e.target.value);
-					} else {
-						setSearch("");
-					}
-				}}
+				onChange={(e) => setSearch(e.target.value)}
 			/>
 			<form
 				onSubmit={(e) => {
@@ -75,7 +79,7 @@ export default function Products() {
 				<input placeholder="Nombre" required value={form.name}
 					onChange={(e) => setForm({ ...form, name: e.target.value })} />
 				<input placeholder="CN" required value={form.national_code}
-					onChange={(e) => setForm({ ...form, national_code: e.target.value })} />
+					onChange={(e) => {setForm({ ...form, national_code: e.target.value }); save.reset()}} />
 				<input placeholder="Precio" type="number" step="0.01" required
 					value={form.price}
 					onChange={(e) => setForm({ ...form, price: e.target.value })} />
@@ -84,11 +88,14 @@ export default function Products() {
 					onChange={(e) => setForm({ ...form, stock: e.target.value })} />
 				<button type="submit">{editingId ? "Guardar Cambios" : "Crear Producto"}</button>
 				{editingId && (
-					<button type="button" onClick={() => { setEditingId(null); setForm(empty); }}>
+					<button type="button" onClick={() => { setEditingId(null); setForm(empty); save.reset();}}>
 						Cancelar
 					</button>
 				)}
 			</form>
+			<p className="text-muted">
+				{saveError && <p className="text-muted">{saveError}</p>}
+			</p>
 			<table>
 				<thead>
 					<tr>
@@ -96,16 +103,16 @@ export default function Products() {
 						<th>CN</th>
 						<th>Precio</th>
 						<th>Stock</th>
-						<th colSpan={2}>Acciones</th>
+						<th>Acciones</th>
 					</tr>
 				</thead>
 				{isLoading ? (
 					<tbody>
-						<tr><td colSpan={6}>Cargando...</td></tr>
+						<tr><td colSpan={5}>Cargando...</td></tr>
 					</tbody>
 				) : error ? (
 					<tbody>
-						<tr><td colSpan={6}>Error al cargar los productos</td></tr>
+						<tr><td colSpan={5}>Error al cargar los productos</td></tr>
 					</tbody>
 				) : data && data.length > 0 ? (
 					<tbody>
