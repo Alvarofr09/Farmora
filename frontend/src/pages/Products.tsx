@@ -6,7 +6,7 @@ import {
 } from "../api/products";
 import { useDebounce } from "../hooks/useDebounce";
 
-const empty = { name: "", national_code: "", price: "", stock:"0" };
+const empty = { name: "", national_code: "", price: undefined, stock:0 };
 
 export default function Products() {
 	const [form, setForm] = useState(empty);
@@ -28,7 +28,7 @@ export default function Products() {
 		mutationFn: () => {
 			const payload = {
 				name: form.name,
-				national_code: form.national_code || undefined,
+				national_code: form.national_code,
 				price: Number(form.price),
 				stock: Number(form.stock),
 			};
@@ -56,9 +56,9 @@ export default function Products() {
 		setEditingId(p.id);
 		setForm({
 			name: p.name,
-			national_code: p.national_code || "",
-			price: p.price,
-			stock: String(p.stock),
+			national_code: p.national_code,
+			price: Number(p.price),
+			stock: Number(p.stock),
 		});
 	};
 
@@ -82,10 +82,10 @@ export default function Products() {
 					onChange={(e) => {setForm({ ...form, national_code: e.target.value }); save.reset()}} />
 				<input placeholder="Precio" type="number" step="0.01" required
 					value={form.price}
-					onChange={(e) => setForm({ ...form, price: e.target.value })} />
+					onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} />
 				<input placeholder="Stock" type="number" required
 					value={form.stock}
-					onChange={(e) => setForm({ ...form, stock: e.target.value })} />
+					onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })} />
 				<button type="submit">{editingId ? "Guardar Cambios" : "Crear Producto"}</button>
 				{editingId && (
 					<button type="button" onClick={() => { setEditingId(null); setForm(empty); save.reset();}}>
