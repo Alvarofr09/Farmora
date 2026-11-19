@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z }  from "zod";
 import { pool } from "../db/pool";
+import errorHandler = require("../middleware/errorHandler");
 
 const router = Router();
 
@@ -36,9 +37,9 @@ router.put("/:id", async (req, res) =>  {
 	const { rows } = await pool.query(
 		`UPDATE products SET name=$1, national_code=$2, price=$3, stock=$4
 		WHERE id=$5 RETURNING *`,
-		[data.name, data.national_code, data.price, data.stock, req.params.id]
+		[data.name, data.national_code?.trim(), data.price, data.stock, req.params.id]
 	);
-	if(!rows[0]) return res.status(404).json({ error: "Producto no encontrado" });
+	if (!rows[0]) throw new errorHandler.AppError(404, "Producto no encontrado");
 	res.json(rows[0]);
 });
 
