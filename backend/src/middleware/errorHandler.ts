@@ -26,6 +26,23 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 		return res.status(409).json({ error: message });
 	}
 
+	// JSON mal formado en el cuerpo de la petición
+	if (err?.type === "entity.parse.failed") {
+		return res.status(400).json({ error: "JSON no válido" });
+	}
+
+	// NOT NULL o CHECK violados
+	if (err?.code === "23502" || err?.code === "23514") {
+		return res.status(400).json({ error: "Datos no válidos" });
+	}
+
+	// Clave foránea (cuando haya ventas o pedidos asociados)
+	if (err?.code === "23503") {
+		return res
+		.status(409)
+		.json({ error: "No se puede completar: hay registros asociados" });
+	}
+
 	console.error(err);
 	res.status(500).json({ error: "Error del servidor" });
 };
